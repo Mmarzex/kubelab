@@ -1,190 +1,191 @@
-![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-incubator/kubespray/master/docs/img/kubernetes-logo.png)
+# kubelab
 
-Deploy a Production Ready Kubernetes Cluster
-============================================
+Easy instructions for a self-hosted Kubernetes installation on Digital Ocean.
 
-If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
-You can get your invite [here](http://slack.k8s.io/)
+Built on top of
+[kubespray](https://github.com/kubernetes-incubator/kubespray/) (sic).
+Check out the [kubespray
+docs](https://github.com/kubernetes-incubator/kubespray#documents) if
+you want to customize this further.
 
--   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Oracle Cloud Infrastructure (Experimental), DigitalOcean (Experimental), or Baremetal**
--   **Highly available** cluster
--   **Composable** (Choice of the network plugin for instance)
--   Supports most popular **Linux distributions**
--   **Continuous integration tests**
+Note: Digital Ocean is preparing to release their own Kubernetes
+platform soon, you may want to check that out. This uses many of the
+same peices, as Digital Ocean open sources most of it. Having a DIY
+platform that you fully control, may still be desirable, so here you
+go.
 
-Quick Start
------------
+## Requirements
 
-To deploy the cluster you can use :
+ * A Digital Ocean account
+ * An SSH client
+ * A domain name, hosted on Digital Ocean DNS
 
-### Ansible
+This guide starts by creating a kubelab controller, which is a
+temporary environment for creating a kubernetes cluster. Using the
+controller node standardizes the installation steps, as well as
+keeping all the configuration off of your personal workstation. The
+kubelab controller may be shutdown once the cluster is fully deployed,
+or you can leave it online and continue to use it as an admin console
+for your cluster.
 
-    # Install dependencies from ``requirements.txt``
-    sudo pip install -r requirements.txt
+This guide outlines using Traefik as a Kubernetes Ingress
+Controller. Traefik uses Let's Encrypt to create a SSL/TLS certificate
+for your domain name, and will provide secure URLs for your services.
 
-    # Copy ``inventory/sample`` as ``inventory/mycluster``
-    cp -rfp inventory/sample/* inventory/mycluster
+## Install kubelab controller environment
 
-    # Update Ansible inventory file with inventory builder
-    declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
-    CONFIG_FILE=inventory/mycluster/hosts.ini python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+ - Login to your Digital Ocean account.
+ - Create a droplet using **Fedora Atomic** (on the Container distributions tab).
+ - The small $5 size is ideal.
+ - Use private networking.
+ - Fill in the User Data field by copy/pasting from
+   [kubelab/k8s-atomic-cloud-init.yml](https://raw.githubusercontent.com/EnigmaCurry/kubelab/kubelab/kubelab/k8s-atomic-cloud-init.yml).
+ - Wait about two minutes, allow for the droplet to reboot one time, then ssh into the droplet as root.
+ - Watch the log for the rest of the installation process:
 
-    # Review and change parameters under ``inventory/mycluster/group_vars``
-    cat inventory/mycluster/group_vars/all/all.yml
-    cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
-
-    # Deploy Kubespray with Ansible Playbook
-    ansible-playbook -i inventory/mycluster/hosts.ini cluster.yml
-
-Note: When Ansible is already installed via system packages on the control machine, other python packages installed via `sudo pip install -r requirements.txt` will go to a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on Ubuntu).
-As a consequence, `ansible-playbook` command will fail with:
 ```
-ERROR! no action detected in task. This often indicates a misspelled module name, or incorrect module path.
+journalctl -f --unit post-install
 ```
-probably pointing on a task depending on a module present in requirements.txt (i.e. "unseal vault").
 
-One way of solving this would be to uninstall the Ansible package and then, to install it via pip but it is not always possible.
-A workaround consists of setting `ANSIBLE_LIBRARY` and `ANSIBLE_MODULE_UTILS` environment variables respectively to the `ansible/modules` and `ansible/module_utils` subdirectories of pip packages installation location, which can be found in the Location field of the output of `pip show [package]` before executing `ansible-playbook`.
+ - Wait for the installation to complete, you should see a message at
+  the end: "Post Installation tasks Complete."
+ - Generate an ssh key to manage the cluster
 
-### Vagrant
+```
+kubelab-ssh-keygen.sh
+```
+ - Copy the ssh public key this outptus, and add it to your Digital Ocean account (Security tab)
 
-For Vagrant we need to install python dependencies for provisioning tasks.
-Check if Python and pip are installed:
+## Launch cluster nodes
 
-    python -V && pip -V
+The cluster nodes are where kubernetes runs, and are seperate from the kubelab controller.
 
-If this returns the version of the software, you're good to go. If not, download and install Python from here <https://www.python.org/downloads/source/>
-Install the necessary requirements
+ - Login to your Digital Ocean account.
+ - Create 3 or however many droplets using **Ubuntu 18.04**.
+ - 2GB of ram is recommended mimimum.
+ - Use private networking.
+ - Make sure to choose the same region as the kubelab controller.
+ - Fill in the User Data field by copy/pasting from
+   [kubelab/ubuntu-cloud-init.yml](https://raw.githubusercontent.com/EnigmaCurry/kubelab/kubelab/kubelab/ubuntu-cloud-init.yml).
+ - Use the ssh key you generated for the kubelab controller (above), and at least one other backup key.
 
-    sudo pip install -r requirements.txt
-    vagrant up
+## Deploy kubernetes
 
-Documents
----------
+ - From the kubelab controller, run the setup command, using the *private* IP
+   addresses for the droplets just created:
 
--   [Requirements](#requirements)
--   [Kubespray vs ...](docs/comparisons.md)
--   [Getting started](docs/getting-started.md)
--   [Ansible inventory and tags](docs/ansible.md)
--   [Integration with existing ansible repo](docs/integration.md)
--   [Deployment data variables](docs/vars.md)
--   [DNS stack](docs/dns-stack.md)
--   [HA mode](docs/ha-mode.md)
--   [Network plugins](#network-plugins)
--   [Vagrant install](docs/vagrant.md)
--   [CoreOS bootstrap](docs/coreos.md)
--   [Debian Jessie setup](docs/debian.md)
--   [openSUSE setup](docs/opensuse.md)
--   [Downloaded artifacts](docs/downloads.md)
--   [Cloud providers](docs/cloud.md)
--   [OpenStack](docs/openstack.md)
--   [AWS](docs/aws.md)
--   [Azure](docs/azure.md)
--   [vSphere](docs/vsphere.md)
--   [DigitalOcean](docs/digitalocean.md)
--   [Large deployments](docs/large-deployments.md)
--   [Upgrades basics](docs/upgrades.md)
--   [Roadmap](docs/roadmap.md)
+```
+# Replace with your cluster nodes private ip addresses:
+DROPLET_IPS="10.93.109.42 10.93.109.70 10.93.111.109" kubelab-setup.sh
+```
 
-Supported Linux Distributions
------------------------------
+ - Setup installs kubelab code on the kubelab controller to
+   `/var/lib/kubelab` and sets up the Ansible inventory files
+   according to the `DROPLET_IPS`.
+ - Once setup is complete, deploy the cluster:
 
--   **Container Linux by CoreOS**
--   **Debian** Jessie, Stretch, Wheezy
--   **Ubuntu** 16.04, 18.04
--   **CentOS/RHEL** 7
--   **Fedora** 28
--   **Fedora/CentOS** Atomic
--   **openSUSE** Leap 42.3/Tumbleweed
+```
+kubelab-deploy.sh
+```
 
-Note: Upstart/SysV init based OS types are not supported.
+Grab a bite to eat, come back in 15 minutes, and ansible should be done
+creating the cluster, showing a PLAY RECAP indicating no failures.
 
-Supported Components
---------------------
+## Access kubernetes
 
--   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.11.3
-    -   [etcd](https://github.com/coreos/etcd) v3.2.18
-    -   [docker](https://www.docker.com/) v17.03 (see note)
-    -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
-    -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
--   Network Plugin
-    -   [calico](https://github.com/projectcalico/calico) v3.1.3
-    -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-    -   [cilium](https://github.com/cilium/cilium) v1.2.0
-    -   [contiv](https://github.com/contiv/install) v1.1.7
-    -   [flanneld](https://github.com/coreos/flannel) v0.10.0
-    -   [weave](https://github.com/weaveworks/weave) v2.4.1
--   Application
-    -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
-    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
-    -   [coredns](https://github.com/coredns/coredns) v1.2.2
-    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.19.0
+The kubernetes config has been copied to the controller node in
+`/root/.kube/config`. You can run kubectl directly from the controller:
 
-Note: kubernetes doesn't support newer docker versions ("Version 17.03 is recommended... Versions 17.06+ might work, but have not yet been tested and verified by the Kubernetes node team" cf. [Bootstrapping Clusters with kubeadm](https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-docker)). Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin). 
+```
+kubectl get nodes
+```
 
-Note 2: rkt support as docker alternative is limited to control plane (etcd and
-kubelet). Docker is still used for Kubernetes cluster workloads and network
-plugins' related OS services. Also note, only one of the supported network
-plugins can be deployed for a given single cluster.
+`/root/.ssh/config` has been setup on the controller node with aliases
+for all of the cluster nodes (node1, node2, node3, etc.) You can use
+ssh to login to any of the nodes:
 
-Requirements
-------------
+```
+ssh node1
+```
 
--   **Ansible v2.4 (or newer) and python-netaddr is installed on the machine
-    that will run Ansible commands**
--   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
--   The target servers must have **access to the Internet** in order to pull docker images.
--   The target servers are configured to allow **IPv4 forwarding**.
--   **Your ssh key must be copied** to all the servers part of your inventory.
--   The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
-    in order to avoid any issue during deployment you should disable your firewall.
--   If kubespray is ran from non-root user account, correct privilege escalation method
-    should be configured in the target servers. Then the `ansible_become` flag
-    or command parameters `--become or -b` should be specified.
+## Install Sealed Secrets
 
-Network Plugins
----------------
+See [bitnami-labs/sealed-secrets](https://github.com/bitnami-labs/sealed-secrets)
 
-You can choose between 6 network plugins. (default: `calico`, except Vagrant uses `flannel`)
+```
+RELEASE=v0.7.0 OS=linux ARCH=amd64
+curl -L https://github.com/bitnami-labs/sealed-secrets/releases/download/$RELEASE/kubeseal-$OS-$ARCH > /tmp/kubeseal
+install -m 755 /tmp/kubeseal /usr/local/bin/kubeseal
+kubectl create -f https://github.com/bitnami-labs/sealed-secrets/releases/download/$RELEASE/sealedsecret-crd.yaml
+kubectl create -f https://github.com/bitnami-labs/sealed-secrets/releases/download/$RELEASE/controller.yaml
+```
 
--   [flannel](docs/flannel.md): gre/vxlan (layer 2) networking.
+Wait a bit for the deployment to start up, then export the public key
+(if you get an error, wait a minute, and try again:)
 
--   [calico](docs/calico.md): bgp (layer 3) networking.
+```
+kubeseal --fetch-cert > /var/lib/kubelab/kubelab.pub
+```
 
--   [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
+You can now use the `kubeseal` utility to create Sealed Secrets.
 
--   [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
+A copy of your kubeseal public key is in
+`/var/lib/kubelab/kubelab.pub`, and can be used to create secrets for
+this cluster from any machine.
 
--   [contiv](docs/contiv.md): supports vlan, vxlan, bgp and Cisco SDN networking. This plugin is able to
-    apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.
+# Configure Traefik Ingress Controller
 
--   [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
-    (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
+See [Helm chart](https://github.com/EnigmaCurry/charts/tree/master/stable/traefik)
+and [Traefik docs](https://docs.traefik.io/configuration/backends/kubernetes/)
 
-The choice is defined with the variable `kube_network_plugin`. There is also an
-option to leverage built-in cloud provider networking instead.
-See also [Network checker](docs/netcheck.md).
+Traefik needs an API token to manage DNS for your domain name on
+Digital Ocean. It uses this for ACME domain verification and issuing a
+wildcard SSL/TLS certificate.
 
-Community docs and resources
-----------------------------
+Store this as a secret in the format that traefik helm chart expects:
 
--   [kubernetes.io/docs/getting-started-guides/kubespray/](https://kubernetes.io/docs/getting-started-guides/kubespray/)
--   [kubespray, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
--   [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
--   [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
+ * Login to your Digital Ocean account
+ * Click on API tab and generate a new API token.
+ * Name the token something like `kubelab-traefik`
+ * Create the secret for traefik, replacing
+   `PUT-YOUR-TOKEN-HERE` with your real API token.
 
-Tools and projects on top of Kubespray
---------------------------------------
+```
+SECRET=DO_AUTH_TOKEN=PUT-YOUR-TOKEN-HERE \
+SECRET_NAME=traefik-dnsprovider-config \
+NAMESPACE=kube-system \
+KUBESEAL_CERT=/var/lib/kubelab/kubelab.pub \
+ENCRYPTED_OUTPUT=traefik-dnsprovider-secret.yml
 
--   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
--   [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
--   [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)
+kubectl create secret generic $SECRET_NAME \
+    -o json \
+    --from-literal="$SECRET" \
+    --dry-run \
+    | kubeseal --cert=$KUBESEAL_CERT \
+    -n $NAMESPACE --format=yaml > $ENCRYPTED_OUTPUT
+```
 
-CI Tests
---------
+Install the secret:
 
-[![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
+```
+kubectl apply -f traefik-dnsprovider-secret.yml
+```
 
-CI/end-to-end tests sponsored by Google (GCE)
-See the [test matrix](docs/test_cases.md) for details.
+ * Edit the traefik helm values in
+   [kubelab/helm/traefik.yml](kubelab/helm/traefik.yml)
+ * Modify the `example.com` domain names to match your own.
+ * Modify the email address, this is the email contact Let's Encrypt
+   will use to notify you (certifcate expirations, security notices etc.)
+
+Normally the traefik helm chart creates its own
+secret. `acme.dnsProvider.createSecret: false` skips this and instead
+uses the existing secret you defined above.
+
+Install traefik:
+
+```
+helm upgrade --install \
+     traefik /var/lib/charts/stable/traefik \
+     --namespace kube-system \
+     --values /var/lib/kubelab/kubelab/helm/traefik.yml
+```
