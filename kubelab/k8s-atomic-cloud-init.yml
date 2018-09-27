@@ -34,6 +34,12 @@ write_files:
     permissions: "0750"
     content: |
       #!/bin/bash
+      KUBELAB_GIT="https://github.com/EnigmaCurry/kubelab.git"
+      HELM_CHARTS_GIT="https://github.com/EnigmaCurry/charts.git"
+      HELM_INSTALL_URL="https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get"
+      SEALED_SECRETS_VERION="v0.7.0"
+      SEALED_SECRETS_URL="https://github.com/bitnami-labs/sealed-secrets/releases/download/$SEALED_SECRETS_VERSION/kubeseal-linux-amd64"
+
       # Setup kubelab and new ansible ssh keys
       if [ -d "/var/lib/kubelab/inventory/kubelab" ]; then
           echo "kubelab alredy setup in /var/lib/kubelab/inventory/kubelab"
@@ -43,12 +49,13 @@ write_files:
           echo "DROPLET_IPS not set"
           exit 1
       fi
-      KUBELAB_GIT="https://github.com/EnigmaCurry/kubelab.git"
-      HELM_CHARTS_GIT="https://github.com/EnigmaCurry/charts.git"
-      HELM_INSTALL_URL="https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get"
 
       # Install helm
       curl -L $HELM_INSTALL_URL | bash
+
+      # Install kubeseal
+      curl -L $SEALED_SECRETS_URL > /tmp/kubeseal
+      install -m 755 /tmp/kubeseal /usr/local/bin/kubeseal
 
       # Setup ansible + kubelab
       git clone $KUBELAB_GIT /var/lib/kubelab
@@ -75,20 +82,28 @@ write_files:
       EOF
       done
       echo "woot."
-      
+
+  - path: "/usr/local/bin/kubelab-playbook.sh"
+    permissions: "0750"
+    content: |
+      #!/bin/bash
+      docker run --rm -t -v /var/lib/kubelab:/kubespray \
+             -v /root/.ssh/kubelab:/root/.ssh/id_rsa \
+             kubelab \
+             ansible-playbook -i inventory/kubelab/hosts.ini $1
+
   - path: "/usr/local/bin/kubelab-deploy.sh"
     permissions: "0750"
     content: |
       #!/bin/bash
-      # Deploy kubelab
-      docker run --rm -t -v /var/lib/kubelab:/kubespray \
-             -v /root/.ssh/kubelab:/root/.ssh/id_rsa \
-             kubelab \
-             ansible-playbook -i inventory/kubelab/hosts.ini cluster.yml
-
+      ## Deploy kubespray cluster and kubelab:
+      /usr/local/bin/kubelab-playbook cluster.yml
+      /usr/local/bin/kubelab-playbook kubelab.yml
+      
+       ## Copy the cluster config to the kubelab controller:
       mkdir -p /root/.kube
       scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r node1:.kube/config /root/.kube/config
-      
+
   - path: "/etc/docker/daemon.json"
     content: |
       {

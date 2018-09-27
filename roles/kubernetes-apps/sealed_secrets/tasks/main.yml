@@ -1,0 +1,37 @@
+- name: "Sealed Secrets | Download CRD Manifest"
+  get_url:
+    url: "https://github.com/bitnami-labs/sealed-secrets/releases/download/{{ sealed_secrets_version }}/sealedsecret-crd.yaml"
+    dest: "/tmp/sealedsecret-crd.yml"
+    force: yes
+  register: result
+  until: "'OK' in result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: kubelab
+
+- name: "Sealed Secrets | Apply CRD Manifest"
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "/tmp/sealedsecret-crd.yml"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: kubelab
+
+- name: "Sealed Secrets | Download CRD Manifontroller Manifest"
+  get_url:
+    url: "https://github.com/bitnami-labs/sealed-secrets/releases/download/{{ sealed_secrets_version }}/controller.yaml"
+    dest: "/tmp/sealedsecret-controller.yml"
+    force: yes
+  register: result
+  until: "'OK' in result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: kubelab
+
+- name: "Sealed Secrets | Apply Controller Manifest"
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "/tmp/sealedsecret-controller.yml"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: kubelab

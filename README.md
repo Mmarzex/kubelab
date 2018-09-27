@@ -108,31 +108,6 @@ ssh to login to any of the nodes:
 ssh node1
 ```
 
-## Install Sealed Secrets
-
-See [bitnami-labs/sealed-secrets](https://github.com/bitnami-labs/sealed-secrets)
-
-```
-RELEASE=v0.7.0 OS=linux ARCH=amd64
-curl -L https://github.com/bitnami-labs/sealed-secrets/releases/download/$RELEASE/kubeseal-$OS-$ARCH > /tmp/kubeseal
-install -m 755 /tmp/kubeseal /usr/local/bin/kubeseal
-kubectl create -f https://github.com/bitnami-labs/sealed-secrets/releases/download/$RELEASE/sealedsecret-crd.yaml
-kubectl create -f https://github.com/bitnami-labs/sealed-secrets/releases/download/$RELEASE/controller.yaml
-```
-
-Wait a bit for the deployment to start up, then export the public key
-(if you get an error, wait a minute, and try again:)
-
-```
-kubeseal --fetch-cert > /var/lib/kubelab/kubelab.pub
-```
-
-You can now use the `kubeseal` utility to create Sealed Secrets.
-
-A copy of your kubeseal public key is in
-`/var/lib/kubelab/kubelab.pub`, and can be used to create secrets for
-this cluster from any machine.
-
 # Configure Traefik Ingress Controller
 
 See [Helm chart](https://github.com/EnigmaCurry/charts/tree/master/stable/traefik)
@@ -154,15 +129,14 @@ Store this as a secret in the format that traefik helm chart expects:
 SECRET=DO_AUTH_TOKEN=PUT-YOUR-TOKEN-HERE \
 SECRET_NAME=traefik-dnsprovider-config \
 NAMESPACE=kube-system \
-KUBESEAL_CERT=/var/lib/kubelab/kubelab.pub \
 ENCRYPTED_OUTPUT=traefik-dnsprovider-secret.yml
 
 kubectl create secret generic $SECRET_NAME \
     -o json \
     --from-literal="$SECRET" \
     --dry-run \
-    | kubeseal --cert=$KUBESEAL_CERT \
-    -n $NAMESPACE --format=yaml > $ENCRYPTED_OUTPUT
+    | kubeseal -n $NAMESPACE --format=yaml \
+    > $ENCRYPTED_OUTPUT
 ```
 
 Install the secret:
