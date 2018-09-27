@@ -37,7 +37,7 @@ write_files:
       KUBELAB_GIT="https://github.com/EnigmaCurry/kubelab.git"
       HELM_CHARTS_GIT="https://github.com/EnigmaCurry/charts.git"
       HELM_INSTALL_URL="https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get"
-      SEALED_SECRETS_VERION="v0.7.0"
+      SEALED_SECRETS_VERSION="v0.7.0"
       SEALED_SECRETS_URL="https://github.com/bitnami-labs/sealed-secrets/releases/download/$SEALED_SECRETS_VERSION/kubeseal-linux-amd64"
 
       # Setup kubelab and new ansible ssh keys
@@ -97,11 +97,9 @@ write_files:
     content: |
       #!/bin/bash
       ## Deploy kubespray cluster and kubelab:
-      /usr/local/bin/kubelab-playbook cluster.yml
-      /usr/local/bin/kubelab-playbook kubelab.yml
-      
-       ## Copy the cluster config to the kubelab controller:
-      mkdir -p /root/.kube
+      /usr/local/bin/kubelab-playbook.sh cluster.yml && \
+      /usr/local/bin/kubelab-playbook.sh kubelab.yml && \
+      mkdir -p /root/.kube && \
       scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r node1:.kube/config /root/.kube/config
 
   - path: "/etc/docker/daemon.json"

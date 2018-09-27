@@ -190,24 +190,27 @@ persistent_volumes_enabled: false
 ## flavor can be tesla or gtx
 # nvidia_gpu_flavor: gtx
 
-### Digital Ocean specific config
-# cloud_provider: digitalocean
-## Provide your own API token
-# digitalocean_api_token: 
-## Pick your ccm release: https://github.com/digitalocean/digitalocean-cloud-controller-manager/releases
-# digitalocean_ccm_version: v0.1.7
-## Pick your csi release: https://github.com/digitalocean/csi-digitalocean/releases
-# digitalocean_csi_version: v0.2.0
-## Pick your helm release: https://github.com/helm/helm/releases
-# helm_version: v2.11.0
-# helm_enabled: true
-# kube_network_plugin: flannel
-# kubelet_preferred_address_types: InternalIP,ExternalIP,Hostname
-# docker_dns_servers_strict: false
-## These are Digital Ocean specific DNS servers
-# upstream_dns_servers:
-#  - 67.207.67.3
-#  - 67.207.67.2
-## Host names *must* be the same as the droplet name
-# override_system_hostname: false
 
+### Kubelab config
+### Digital Ocean specific config
+cloud_provider: digitalocean
+## Provide your own API token
+digitalocean_api_token: 
+## Pick your ccm release: https://github.com/digitalocean/digitalocean-cloud-controller-manager/releases
+digitalocean_ccm_version: v0.1.7
+## Pick your csi release: https://github.com/digitalocean/csi-digitalocean/releases
+digitalocean_csi_version: v0.2.0
+## Pick your helm release: https://github.com/helm/helm/releases
+helm_version: v2.11.0
+helm_enabled: true
+kube_network_plugin: flannel
+kubelet_preferred_address_types: InternalIP,ExternalIP,Hostname
+docker_dns_servers_strict: false
+## These are Digital Ocean specific DNS servers
+upstream_dns_servers:
+ - 67.207.67.3
+ - 67.207.67.2
+## Host names *must* be the same as the droplet name
+override_system_hostname: false
+
+sealed_secrets_version: v0.7.0
