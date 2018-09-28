@@ -69,8 +69,8 @@ write_files:
       # Setup ansible + kubelab
       git clone $KUBELAB_GIT $KUBELAB_HOME
       # Build ansible docker image (if not already)
-      docker inspect --type=image kubelab > /dev/null && \
-          docker build -t kubelab .
+      docker inspect --type=image kubelab > /dev/null
+      [ $? -ne 0 ] && docker build -t kubelab $KUBELAB_HOME
 
       # Configure kubelab ansible inventory from DROPLET_IPS
       cp -a $KUBELAB_HOME/inventory/sample $KUBELAB_HOME/inventory/kubelab

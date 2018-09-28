@@ -1,6 +1,6 @@
 # kubelab
 
-Easy instructions for a self-hosted Kubernetes installation on Digital Ocean.
+Easy instructions for a self-hosted Kubernetes installation on DigitalOcean.
 
 Built on top of
 [kubespray](https://github.com/kubernetes-incubator/kubespray/) (sic).
@@ -8,17 +8,17 @@ Check out the [kubespray
 docs](https://github.com/kubernetes-incubator/kubespray#documents) if
 you want to customize this further.
 
-Note: Digital Ocean is preparing to release their own Kubernetes
+Note: DigitalOcean is preparing to release their own Kubernetes
 platform soon, you may want to check that out. This uses many of the
-same peices, as Digital Ocean open sources most of it. Having a DIY
+same peices, as DigitalOcean open sources most of it. Having a DIY
 platform that you fully control, may still be desirable, so here you
 go.
 
 ## Requirements
 
- * A Digital Ocean account
+ * A DigitalOcean account
  * An SSH client
- * A domain name, hosted on Digital Ocean DNS
+ * A domain name, hosted on DigitalOcean DNS
 
 This guide starts by creating a kubelab controller, which is a
 temporary environment for creating a kubernetes cluster. Using the
@@ -34,7 +34,7 @@ for your domain name, and will provide secure URLs for your services.
 
 ## Install kubelab controller environment
 
- - Login to your Digital Ocean account.
+ - Login to your DigitalOcean account.
  - Create a droplet using **Fedora Atomic** (on the Container distributions tab).
  - The small $5 size is ideal.
  - Use private networking.
@@ -54,13 +54,13 @@ journalctl -f --unit post-install
 ```
 kubelab-ssh-keygen.sh
 ```
- - Copy the ssh public key this outptus, and add it to your Digital Ocean account (Security tab)
+ - Copy the ssh public key this outptus, and add it to your DigitalOcean account (Security tab)
 
 ## Launch cluster nodes
 
 The cluster nodes are where kubernetes runs, and are seperate from the kubelab controller.
 
- - Login to your Digital Ocean account.
+ - Login to your DigitalOcean account.
  - Create 3 or however many droplets using **Ubuntu 18.04**.
  - 2GB of ram is recommended mimimum.
  - Use private networking.
@@ -114,12 +114,12 @@ See [Helm chart](https://github.com/EnigmaCurry/charts/tree/master/stable/traefi
 and [Traefik docs](https://docs.traefik.io/configuration/backends/kubernetes/)
 
 Traefik needs an API token to manage DNS for your domain name on
-Digital Ocean. It uses this for ACME domain verification and issuing a
+DigitalOcean. It uses this for ACME domain verification and issuing a
 wildcard SSL/TLS certificate.
 
 Store this as a secret in the format that traefik helm chart expects:
 
- * Login to your Digital Ocean account
+ * Login to your DigitalOcean account
  * Click on API tab and generate a new API token.
  * Name the token something like `kubelab-traefik`
  * Create the secret for traefik, replacing
