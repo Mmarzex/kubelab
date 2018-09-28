@@ -61,7 +61,7 @@ kubelab-ssh-keygen.sh
 The cluster nodes are where kubernetes runs, and are seperate from the kubelab controller.
 
  - Login to your DigitalOcean account.
- - Create 3 or however many droplets using **Ubuntu 18.04**.
+ - Create 3 or however many droplets using **Ubuntu 16.04**.
  - 2GB of ram is recommended mimimum.
  - Use private networking.
  - Make sure to choose the same region as the kubelab controller.
@@ -71,17 +71,22 @@ The cluster nodes are where kubernetes runs, and are seperate from the kubelab c
 
 ## Deploy kubernetes
 
- - From the kubelab controller, run the setup command, using the *private* IP
-   addresses for the droplets just created:
+ - Login to your DigitalOcean account.
+ - Click on API tab and generate a new API token.
+ - Name the token something like `kubelab`.
+ - Copy the given token.
+ - From the kubelab controller, run the setup command, replacing with
+   your DigitalOcean API token, and the *private* IP addresses for
+   your droplets:
 
 ```
-# Replace with your cluster nodes private ip addresses:
-DROPLET_IPS="10.93.109.42 10.93.109.70 10.93.111.109" kubelab-setup.sh
+# Use your own token and private IP addresses:
+DIGITALOCEAN_API_TOKEN=xxxx DROPLET_IPS="10.93.109.42 10.93.109.70 10.93.111.109" kubelab-setup.sh
 ```
 
  - Setup installs kubelab code on the kubelab controller to
-   `/var/lib/kubelab` and sets up the Ansible inventory files
-   according to the `DROPLET_IPS`.
+   `/var/lib/kubelab`, builds the kubelab docker image, and sets up
+   the Ansible inventory files according to the `DROPLET_IPS`.
  - Once setup is complete, deploy the cluster:
 
 ```
