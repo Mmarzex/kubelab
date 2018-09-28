@@ -20,75 +20,91 @@ write_files:
       rm /etc/systemd/system/post-install.service
       rm /usr/local/bin/post-install.sh
 
+  - path: "/etc/systemd/system/post-install.service"
+    content: |
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/post-install.sh
+      [Install]
+      WantedBy=multi-user.target
+
   - path: "/usr/local/bin/kubelab-ssh-keygen.sh"
     permissions: "0750"
     content: |
       #!/bin/bash
       # Setup new kubelab ansible ssh keys
-      ssh-keygen -N '' -f /root/.ssh/kubelab
-      cat /root/.ssh/kubelab.pub >> /root/.ssh/authorized_keys
-      echo "Kubelab Ansible SSH pubkey:"
-      tail -1 /root/.ssh/authorized_keys
+      ssh-keygen -N '' -f $HOME/.ssh/kubelab && \
+      cat $HOME/.ssh/kubelab.pub >> $HOME/.ssh/authorized_keys && \
+      echo "Kubelab Ansible SSH pubkey:" && \
+      tail -1 $HOME/.ssh/authorized_keys
       
   - path: "/usr/local/bin/kubelab-setup.sh"
     permissions: "0750"
     content: |
       #!/bin/bash
-      KUBELAB_GIT="https://github.com/EnigmaCurry/kubelab.git"
-      HELM_CHARTS_GIT="https://github.com/EnigmaCurry/charts.git"
-      HELM_INSTALL_URL="https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get"
-      SEALED_SECRETS_VERSION="v0.7.0"
-      SEALED_SECRETS_URL="https://github.com/bitnami-labs/sealed-secrets/releases/download/$SEALED_SECRETS_VERSION/kubeseal-linux-amd64"
-
-      # Setup kubelab and new ansible ssh keys
-      if [ -d "/var/lib/kubelab/inventory/kubelab" ]; then
-          echo "kubelab alredy setup in /var/lib/kubelab/inventory/kubelab"
+      if [[ ! -v KUBELAB_HOME ]]; then
+          KUBELAB_HOME="/var/lib/kubelab"      
+      fi
+      
+      if [[ ! -v KUBELAB_GIT ]]; then
+          KUBELAB_GIT="https://github.com/EnigmaCurry/kubelab.git"
+      fi
+      
+      if [ -d "$KUBELAB_HOME/inventory/kubelab" ]; then
+          echo "kubelab alredy setup in $KUBELAB_HOME/inventory/kubelab"
+          echo "remove this directory before running setup again."
           exit 1
       fi
+      
       if [[ ! -v DROPLET_IPS ]]; then
           echo "DROPLET_IPS not set"
           exit 1
       fi
-
-      # Install helm
-      curl -L $HELM_INSTALL_URL | bash
-
-      # Install kubeseal
-      curl -L $SEALED_SECRETS_URL > /tmp/kubeseal
-      install -m 755 /tmp/kubeseal /usr/local/bin/kubeseal
-
+      
+      if [[ ! -v DIGITALOCEAN_API_TOKEN ]]; then
+          echo "DIGITALOCEAN_API_TOKEN not set"
+          exit 1
+      fi
+      
       # Setup ansible + kubelab
-      git clone $KUBELAB_GIT /var/lib/kubelab
-      git clone $HELM_CHARTS_GIT /var/lib/charts
-      cd /var/lib/kubelab
-      docker inspect --type=image kubelab > /dev/null
-      IMAGE_EXISTS=$?
-      [ $IMAGE_EXISTS -ne 0 ] && docker build -t kubelab .
-      cp -a inventory/sample inventory/kubelab
-      docker run --rm -t -v /var/lib/kubelab/inventory:/kubespray/inventory \
+      git clone $KUBELAB_GIT $KUBELAB_HOME
+      # Build ansible docker image (if not already)
+      docker inspect --type=image kubelab > /dev/null && \
+          docker build -t kubelab .
+
+      # Configure kubelab ansible inventory from DROPLET_IPS
+      cp -a $KUBELAB_HOME/inventory/sample $KUBELAB_HOME/inventory/kubelab
+      docker run --rm -t -v $KUBELAB_HOME/inventory:/kubespray/inventory \
                  -e CONFIG_FILE=inventory/kubelab/hosts.ini \
                  kubelab \
                  python3 contrib/inventory_builder/inventory.py $DROPLET_IPS
-
-      # Configure ssh client to connect to any cluster node
-      rm -f /root/.ssh/config
+      sed -i "s/^digitalocean_api_token:.*/digitalocean_api_token: $DIGITALOCEAN_API_TOKEN/" \
+          $KUBELAB_HOME/inventory/kubelab/group_vars/k8s-cluster/k8s-cluster.yml
+                 
+      # Configure ssh aliases for cluster node
+      rm -f $HOME/.ssh/config
       IFS=' ' read -a nodes <<< "${DROPLET_IPS}"
       for n in ${!nodes[@]}; do
-      cat <<EOF >> /root/.ssh/config
+      cat <<EOF >> $HOME/.ssh/config
       Host node$((n+1))
           Hostname ${nodes[$n]}
           User root
-          IdentityFile /root/.ssh/kubelab
+          IdentityFile $HOME/.ssh/kubelab
       EOF
       done
-      echo "woot."
-
+      
+      echo "Configuration created in $KUBELAB_HOME/invetory/kubelab"
+      echo "Run kubelab-deploy.sh to deploy the cluster"
+      
   - path: "/usr/local/bin/kubelab-playbook.sh"
     permissions: "0750"
     content: |
       #!/bin/bash
-      docker run --rm -t -v /var/lib/kubelab:/kubespray \
-             -v /root/.ssh/kubelab:/root/.ssh/id_rsa \
+      if [[ ! -v KUBELAB_HOME ]]; then
+             KUBELAB_HOME="/var/lib/kubelab"      
+      fi
+      docker run --rm -t -v $KUBELAB_HOME:/kubespray \
+             -v $HOME/.ssh/kubelab:$HOME/.ssh/id_rsa \
              kubelab \
              ansible-playbook -i inventory/kubelab/hosts.ini $1
 
@@ -99,8 +115,8 @@ write_files:
       ## Deploy kubespray cluster and kubelab:
       /usr/local/bin/kubelab-playbook.sh cluster.yml && \
       /usr/local/bin/kubelab-playbook.sh kubelab.yml && \
-      mkdir -p /root/.kube && \
-      scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r node1:.kube/config /root/.kube/config
+      mkdir -p $HOME/.kube && \
+      scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r node1:.kube/config $HOME/.kube/config
 
   - path: "/etc/docker/daemon.json"
     content: |
@@ -108,14 +124,6 @@ write_files:
         "storage-driver": "overlay2"
       }
       
-  - path: "/etc/systemd/system/post-install.service"
-    content: |
-      [Service]
-      Type=oneshot
-      ExecStart=/usr/local/bin/post-install.sh
-      [Install]
-      WantedBy=multi-user.target
-
   - path: "/etc/yum.repos.d/docker.repo"
     content: |
       [docker-ce-stable]
