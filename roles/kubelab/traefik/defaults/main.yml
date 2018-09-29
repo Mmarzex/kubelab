@@ -1,0 +1,4 @@
+traefik_domain: *.k8s.example.com
+traefik_dashboard_enabled: false
+traefik_dashboard_domain: traefik.k8s.example.com
+traefik_email: letsencrypt@example.com

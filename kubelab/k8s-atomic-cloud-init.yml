@@ -55,16 +55,13 @@ write_files:
           echo "remove this directory before running setup again."
           exit 1
       fi
-      
-      if [[ ! -v DROPLET_IPS ]]; then
-          echo "DROPLET_IPS not set"
-          exit 1
-      fi
-      
-      if [[ ! -v DIGITALOCEAN_API_TOKEN ]]; then
-          echo "DIGITALOCEAN_API_TOKEN not set"
-          exit 1
-      fi
+
+      for n in DROPLET_IPS DIGITALOCEAN_API_TOKEN DOMAIN EMAIL; do
+          if [[ ! -v $n ]]; then
+              echo "$n not set"
+              exit 1
+          fi
+      done
       
       # Setup ansible + kubelab
       git clone $KUBELAB_GIT $KUBELAB_HOME
@@ -72,14 +69,17 @@ write_files:
       docker inspect --type=image kubelab > /dev/null
       [ $? -ne 0 ] && docker build -t kubelab $KUBELAB_HOME
 
-      # Configure kubelab ansible inventory from DROPLET_IPS
+      # Configure kubelab ansible inventory
       cp -a $KUBELAB_HOME/inventory/sample $KUBELAB_HOME/inventory/kubelab
       docker run --rm -t -v $KUBELAB_HOME/inventory:/kubespray/inventory \
                  -e CONFIG_FILE=inventory/kubelab/hosts.ini \
                  kubelab \
                  python3 contrib/inventory_builder/inventory.py $DROPLET_IPS
       sed -i "s/^digitalocean_api_token:.*/digitalocean_api_token: $DIGITALOCEAN_API_TOKEN/" \
-          $KUBELAB_HOME/inventory/kubelab/group_vars/k8s-cluster/k8s-cluster.yml
+             "s/k8s\.example\.com/$TRAEFIK_DOMAIN/g" \
+             "s/^traefik_email:.*/traefik_email: $EMAIL/" \
+             "s/^traefik_domain_wildcard:.*/traefik_domain_wildcard: *.$DOMAIN/" \
+             $KUBELAB_HOME/inventory/kubelab/group_vars/k8s-cluster/k8s-cluster.yml
                  
       # Configure ssh aliases for cluster node
       rm -f $HOME/.ssh/config

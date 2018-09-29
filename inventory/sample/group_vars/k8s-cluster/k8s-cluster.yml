@@ -213,4 +213,7 @@ upstream_dns_servers:
 ## Host names *must* be the same as the droplet name
 override_system_hostname: false
 
-sealed_secrets_version: v0.7.0
+traefik_dashboard_enabled: true
+traefik_domain_wildcard: *.k8s.example.com
+traefik_dashboard_domain: traefik.k8s.example.com
+traefik_email: letsencrypt@example.com

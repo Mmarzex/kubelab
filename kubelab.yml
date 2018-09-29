@@ -2,4 +2,5 @@
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubernetes-apps/sealed_secrets, tags: kubelab }
+    - kubelab/sealed_secrets
+    - kubelab/traefik

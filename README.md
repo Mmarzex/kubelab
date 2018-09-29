@@ -38,27 +38,42 @@ for your domain name, and will provide secure URLs for your services.
  - Create a droplet using **Fedora Atomic** (on the Container distributions tab).
  - The small $5 size is ideal.
  - Use private networking.
- - Fill in the User Data field by copy/pasting from
-   [kubelab/k8s-atomic-cloud-init.yml](https://raw.githubusercontent.com/EnigmaCurry/kubelab/kubelab/kubelab/k8s-atomic-cloud-init.yml).
- - Wait about two minutes, allow for the droplet to reboot one time, then ssh into the droplet as root.
- - Watch the log for the rest of the installation process:
+ - Fill in the User Data field by copy/pasting from [kubelab/k8s-atomic-cloud-init.yml](https://raw.githubusercontent.com/EnigmaCurry/kubelab/kubelab/kubelab/k8s-atomic-cloud-init.yml).
+ - Wait about three minutes, the droplet will reboot itself, then SSH
+   into the droplet as root.
+
+### If you want to watch the install log of the controller:
+
+ - Within about the first three minutes, you can follow the cloud init log:
+
+```
+tail -f /var/log/cloud-init-output.log
+```
+
+ - After the cloud-init finishes, the droplet will reboot, and then run the
+   post-install script.
+ - Watch the post install log:
 
 ```
 journalctl -f --unit post-install
 ```
 
- - Wait for the installation to complete, you should see a message at
-  the end: "Post Installation tasks Complete."
- - Generate an ssh key to manage the cluster
+ - Upon completion, you should see a message at the end: "Post
+  Installation tasks Complete."
+ - Press Ctrl-C to exit the log tail.
+ 
+## Launch cluster nodes
+
+The cluster nodes are where kubernetes runs, and are seperate from the kubelab controller.
+
+ - Generate an ssh key to manage the cluster. On the controller, run:
 
 ```
 kubelab-ssh-keygen.sh
 ```
- - Copy the ssh public key this outptus, and add it to your DigitalOcean account (Security tab)
 
-## Launch cluster nodes
-
-The cluster nodes are where kubernetes runs, and are seperate from the kubelab controller.
+Copy the text starting with with `ssh-rsa ....` and use it when
+creating cluster droplets.
 
  - Login to your DigitalOcean account.
  - Create 3 or however many droplets using **Ubuntu 16.04**.
@@ -67,7 +82,7 @@ The cluster nodes are where kubernetes runs, and are seperate from the kubelab c
  - Make sure to choose the same region as the kubelab controller.
  - Fill in the User Data field by copy/pasting from
    [kubelab/ubuntu-cloud-init.yml](https://raw.githubusercontent.com/EnigmaCurry/kubelab/kubelab/kubelab/ubuntu-cloud-init.yml).
- - Use the ssh key you generated for the kubelab controller (above), and at least one other backup key.
+ - Create and assign a new SSH key using the one generated above.
 
 ## Deploy kubernetes
 
@@ -75,31 +90,44 @@ The cluster nodes are where kubernetes runs, and are seperate from the kubelab c
  - Click on API tab and generate a new API token.
  - Name the token something like `kubelab`.
  - Copy the given token.
- - From the kubelab controller, run the setup command, replacing with
-   your DigitalOcean API token, and the *private* IP addresses for
-   your droplets:
-
+ - From the kubelab controller, run the setup command setting your own
+   specific values:
+   - DOMAIN - The (sub-)domain you want to use with traefik.
+   - EMAIL - Your email address to register with Let's Encrypt.
+   - DIGITALOCEAN_API_TOKEN - the token generated above
+   - DROPLET_IPS - The **private** IP addresses of your droplets (seperate with spaces)
+   
 ```
-# Use your own token and private IP addresses:
-DIGITALOCEAN_API_TOKEN=xxxx DROPLET_IPS="10.93.109.42 10.93.109.70 10.93.111.109" kubelab-setup.sh
+# These vars are only used during initial setup:
+export DOMAIN=k8s.example.com
+export EMAIL=letsencrypt@example.com
+export DIGITALOCEAN_API_TOKEN=xxxx
+export DROPLET_IPS="10.93.109.42 10.93.109.70 10.93.111.109"
+kubelab-setup.sh
 ```
 
- - Setup installs kubelab code on the kubelab controller to
-   `/var/lib/kubelab`, builds the kubelab docker image, and sets up
-   the Ansible inventory files according to the `DROPLET_IPS`.
- - Once setup is complete, deploy the cluster:
+ - Setup does the following on the kubelab controller:
+   - Installs kubelab code to `/var/lib/kubelab` (or `KUBELAB_HOME` if set)
+   - Builds the kubelab docker image.
+   - Creates ansbile inventory according to DROPLET_IPS and other vars.
+   
+ - Once setup is complete, deploy the cluster by running:
 
 ```
 kubelab-deploy.sh
 ```
+ - Deploy does the following:
+   - Runs [cluster.yml](cluster.yml) - The main kubespray playbook.
+   - Runs [kubelab.yml](kubelab.yml) - Additional kubelab playbook.
 
 Grab a bite to eat, come back in 15 minutes, and ansible should be done
-creating the cluster, showing a PLAY RECAP indicating no failures.
+creating the cluster, showing a `PLAY RECAP` indicating no failures.
 
 ## Access kubernetes
 
-The kubernetes config has been copied to the controller node in
-`/root/.kube/config`. You can run kubectl directly from the controller:
+After deployment, the kubernetes config has been copied to the
+controller node in `/root/.kube/config`. You can run kubectl directly
+from the controller:
 
 ```
 kubectl get nodes
@@ -113,58 +141,20 @@ ssh to login to any of the nodes:
 ssh node1
 ```
 
-# Configure Traefik Ingress Controller
+## Running Playbooks
 
-See [Helm chart](https://github.com/EnigmaCurry/charts/tree/master/stable/traefik)
-and [Traefik docs](https://docs.traefik.io/configuration/backends/kubernetes/)
-
-Traefik needs an API token to manage DNS for your domain name on
-DigitalOcean. It uses this for ACME domain verification and issuing a
-wildcard SSL/TLS certificate.
-
-Store this as a secret in the format that traefik helm chart expects:
-
- * Login to your DigitalOcean account
- * Click on API tab and generate a new API token.
- * Name the token something like `kubelab-traefik`
- * Create the secret for traefik, replacing
-   `PUT-YOUR-TOKEN-HERE` with your real API token.
+Playbooks can be run with the helper script:
 
 ```
-SECRET=DO_AUTH_TOKEN=PUT-YOUR-TOKEN-HERE \
-SECRET_NAME=traefik-dnsprovider-config \
-NAMESPACE=kube-system \
-ENCRYPTED_OUTPUT=traefik-dnsprovider-secret.yml
-
-kubectl create secret generic $SECRET_NAME \
-    -o json \
-    --from-literal="$SECRET" \
-    --dry-run \
-    | kubeseal -n $NAMESPACE --format=yaml \
-    > $ENCRYPTED_OUTPUT
+kubelab-playbook.sh NAME_OF_PLAYBOOK
 ```
 
-Install the secret:
+The playbook argument is relative to KUBELAB_HOME (`/var/lib/kubelab`)
+
+For example:
 
 ```
-kubectl apply -f traefik-dnsprovider-secret.yml
+kubelab-playbook.sh kubelab.yml
 ```
 
- * Edit the traefik helm values in
-   [kubelab/helm/traefik.yml](kubelab/helm/traefik.yml)
- * Modify the `example.com` domain names to match your own.
- * Modify the email address, this is the email contact Let's Encrypt
-   will use to notify you (certifcate expirations, security notices etc.)
-
-Normally the traefik helm chart creates its own
-secret. `acme.dnsProvider.createSecret: false` skips this and instead
-uses the existing secret you defined above.
-
-Install traefik:
-
-```
-helm upgrade --install \
-     traefik /var/lib/charts/stable/traefik \
-     --namespace kube-system \
-     --values /var/lib/kubelab/kubelab/helm/traefik.yml
-```
+This reapplies the [/var/lib/kubelab/kubelab.yml](kubelab.yml) playbook.
