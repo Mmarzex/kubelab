@@ -75,10 +75,10 @@ write_files:
                  -e CONFIG_FILE=inventory/kubelab/hosts.ini \
                  kubelab \
                  python3 contrib/inventory_builder/inventory.py $DROPLET_IPS
-      sed -i "s/^digitalocean_api_token:.*/digitalocean_api_token: $DIGITALOCEAN_API_TOKEN/" \
-             "s/k8s\.example\.com/$TRAEFIK_DOMAIN/g" \
-             "s/^traefik_email:.*/traefik_email: $EMAIL/" \
-             "s/^traefik_domain_wildcard:.*/traefik_domain_wildcard: *.$DOMAIN/" \
+      sed -i -e "s/^digitalocean_api_token:.*/digitalocean_api_token: $DIGITALOCEAN_API_TOKEN/" \
+             -e "s/k8s\.example\.com/$TRAEFIK_DOMAIN/g" \
+             -e "s/^traefik_email:.*/traefik_email: $EMAIL/" \
+             -e "s/^traefik_domain_wildcard:.*/traefik_domain_wildcard: *.$DOMAIN/" \
              $KUBELAB_HOME/inventory/kubelab/group_vars/k8s-cluster/k8s-cluster.yml
                  
       # Configure ssh aliases for cluster node

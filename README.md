@@ -1,6 +1,7 @@
 # kubelab
 
-Easy instructions for a self-hosted Kubernetes installation on DigitalOcean.
+Easy instructions for a self-hosted Kubernetes installation on
+DigitalOcean.
 
 Built on top of
 [kubespray](https://github.com/kubernetes-incubator/kubespray/) (sic).
@@ -92,10 +93,6 @@ creating cluster droplets.
  - Copy the given token.
  - From the kubelab controller, run the setup command setting your own
    specific values:
-   - DOMAIN - The (sub-)domain you want to use with traefik.
-   - EMAIL - Your email address to register with Let's Encrypt.
-   - DIGITALOCEAN_API_TOKEN - the token generated above
-   - DROPLET_IPS - The **private** IP addresses of your droplets (seperate with spaces)
    
 ```
 # These vars are only used during initial setup:
@@ -106,11 +103,21 @@ export DROPLET_IPS="10.93.109.42 10.93.109.70 10.93.111.109"
 kubelab-setup.sh
 ```
 
+   - `DOMAIN` - The (sub-)domain you want to use with traefik.
+   - `EMAIL` - Your email address to register with Let's Encrypt.
+   - `DIGITALOCEAN_API_TOKEN` - the token generated above
+   - `DROPLET_IPS` - The **private** IP addresses of your droplets (seperate with spaces)
+
  - Setup does the following on the kubelab controller:
    - Installs kubelab code to `/var/lib/kubelab` (or `KUBELAB_HOME` if set)
    - Builds the kubelab docker image.
-   - Creates ansbile inventory according to DROPLET_IPS and other vars.
-   
+   - Creates ansible inventory according to `DROPLET_IPS` and other vars.
+ - The generated inventory is `/var/lib/kubelab/inventory/kubelab`.
+   This is the configuration for your cluster, and where you can make
+   your own changes. This directory is listed in `.gitignore` by
+   default, so you can (semi-safely) put your secrets anywhere in this
+   directory. The directory `/var/lib/kubelab/inventory/sample` is
+   used as its template.
  - Once setup is complete, deploy the cluster by running:
 
 ```
@@ -122,6 +129,12 @@ kubelab-deploy.sh
 
 Grab a bite to eat, come back in 15 minutes, and ansible should be done
 creating the cluster, showing a `PLAY RECAP` indicating no failures.
+
+If everything worked, you should be able to visit
+`traefik.yourdomain.example.com` in your web-browser. It should
+automatically forward to HTTPS, and use a new certificate issued by
+Lets Encrypt. This same certificate will apply to any subdomain
+`*.yourdomain.example.com` and will automatically renew.
 
 ## Access kubernetes
 
