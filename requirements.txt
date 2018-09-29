@@ -4,4 +4,3 @@ netaddr
 pbr>=1.6
 ansible-modules-hashivault>=3.9.4
 hvac
-pyhelm

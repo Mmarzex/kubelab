@@ -1,28 +1,11 @@
 ---
+- name: Traefik | Create helm values config
+  host: node1
+  template:
+    src: traefik.yml
+    dest: /tmp/traefik.yml
+
 - name: Traefik | Install helm chart
-  helm:
-    chart:
-      name: traefik
-      version: 1.44.0
-    values:
-      dashboard:
-        enabled: '{{ traefik_dashboard_enabled }}'
-        domain: '{{ traefik_dashboard_domain }}'
-      rbac:
-        enabled: true
-      ssl:
-        enabled: true
-        enforced: true
-      acme:
-        staging: false
-        enabled: true
-        email: '{{ traefik_email }}'
-        challengeType: dns-01
-        dnsProvider:
-          name: digitalocean
-          digitalocean:
-            DO_AUTH_TOKEN: '{{ digitalocean_api_token }}'
-        domains:
-          enabled: true
-          domainsList:
-            - main: '{{ traefik_domain_wildcard }}'
+  host: node1
+  shell: "helm install -n traefik --namespace kube-system --values /tmp/traefik.yml --set acme.dnsProvider.digitalocean.DO_AUTH_TOKEN={{ digitalocean_api_token }} stable/traefik"
+

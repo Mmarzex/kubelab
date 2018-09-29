@@ -1,0 +1,19 @@
+dashboard:
+  enabled: '{{ traefik_dashboard_enabled }}'
+  domain: '{{ traefik_dashboard_domain }}'
+rbac:
+  enabled: true
+ssl:
+  enabled: true
+  enforced: true
+acme:
+  staging: false
+  enabled: true
+  email: '{{ traefik_email }}'
+  challengeType: dns-01
+  dnsProvider:
+    name: digitalocean
+  domains:
+    enabled: true
+    domainsList:
+      - main: '{{ traefik_domain_wildcard }}'

@@ -132,11 +132,25 @@ kubelab-deploy.sh
 Grab a bite to eat, come back in 15 minutes, and ansible should be done
 creating the cluster, showing a `PLAY RECAP` indicating no failures.
 
-If everything worked, you should be able to visit
-`traefik.yourdomain.example.com` in your web-browser. It should
-automatically forward to HTTPS, and use a new certificate issued by
-Lets Encrypt. This same certificate will apply to any subdomain
-`*.yourdomain.example.com` and will automatically renew.
+Check on the traefik service:
+
+```
+kubectl -n kube-system get service traefik
+```
+
+A Load Balancer service should have started and will show an external
+IP address.
+
+ - In your DigitalOcean account, create a wildcard DNS entry for your
+   domain (`*.yourdomain.example.com`) and point it to the load
+   balancer that started for the traefik service.
+ - TODO: automate this.
+
+You should now be able to visit `traefik.yourdomain.example.com` in
+your web-browser. It should automatically forward to HTTPS, and use a
+new certificate issued by Lets Encrypt. This same certificate will
+apply to any subdomain `*.yourdomain.example.com` and will
+automatically renew.
 
 ## Access kubernetes
 
