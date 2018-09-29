@@ -11,7 +11,7 @@ you want to customize this further.
 
 Note: DigitalOcean is preparing to release their own Kubernetes
 platform soon, you may want to check that out. This uses many of the
-same peices, as DigitalOcean open sources most of it. Having a DIY
+same pieces, as DigitalOcean open sources most of it. Having a DIY
 platform that you fully control, may still be desirable, so here you
 go.
 
@@ -21,6 +21,8 @@ go.
  * An SSH client
  * A domain name, hosted on DigitalOcean DNS
 
+## Install kubelab controller environment
+
 This guide starts by creating a kubelab controller, which is a
 temporary environment for creating a kubernetes cluster. Using the
 controller node standardizes the installation steps, as well as
@@ -29,19 +31,14 @@ kubelab controller may be shutdown once the cluster is fully deployed,
 or you can leave it online and continue to use it as an admin console
 for your cluster.
 
-This guide outlines using Traefik as a Kubernetes Ingress
-Controller. Traefik uses Let's Encrypt to create a SSL/TLS certificate
-for your domain name, and will provide secure URLs for your services.
-
-## Install kubelab controller environment
-
  - Login to your DigitalOcean account.
  - Create a droplet using **Fedora Atomic** (on the Container distributions tab).
  - The small $5 size is ideal.
  - Use private networking.
  - Fill in the User Data field by copy/pasting from [kubelab/k8s-atomic-cloud-init.yml](https://raw.githubusercontent.com/EnigmaCurry/kubelab/kubelab/kubelab/k8s-atomic-cloud-init.yml).
- - Wait about three minutes, the droplet will reboot itself, then SSH
-   into the droplet as root.
+ - Click Create.
+   - Wait about three minutes, the droplet will reboot itself, then SSH
+     into the droplet as root.
 
 ### If you want to watch the install log of the controller:
 
@@ -53,7 +50,7 @@ tail -f /var/log/cloud-init-output.log
 
  - After the cloud-init finishes, the droplet will reboot, and then run the
    post-install script.
- - Watch the post install log:
+ - Watch the post-install log:
 
 ```
 journalctl -f --unit post-install
@@ -84,6 +81,7 @@ creating cluster droplets.
  - Fill in the User Data field by copy/pasting from
    [kubelab/ubuntu-cloud-init.yml](https://raw.githubusercontent.com/EnigmaCurry/kubelab/kubelab/kubelab/ubuntu-cloud-init.yml).
  - Create and assign a new SSH key using the one generated above.
+ - Click Create!
 
 ## Deploy kubernetes
 
@@ -91,7 +89,7 @@ creating cluster droplets.
  - Click on API tab and generate a new API token.
  - Name the token something like `kubelab`.
  - Copy the given token.
- - From the kubelab controller, run the setup command setting your own
+ - From the kubelab controller, run the following setup command using your own
    specific values:
    
 ```
@@ -132,26 +130,6 @@ kubelab-deploy.sh
 Grab a bite to eat, come back in 15 minutes, and ansible should be done
 creating the cluster, showing a `PLAY RECAP` indicating no failures.
 
-Check on the traefik service:
-
-```
-kubectl -n kube-system get service traefik
-```
-
-A Load Balancer service should have started and will show an external
-IP address.
-
- - In your DigitalOcean account, create a wildcard DNS entry for your
-   domain (`*.yourdomain.example.com`) and point it to the load
-   balancer that started for the traefik service.
- - TODO: automate this.
-
-You should now be able to visit `traefik.yourdomain.example.com` in
-your web-browser. It should automatically forward to HTTPS, and use a
-new certificate issued by Lets Encrypt. This same certificate will
-apply to any subdomain `*.yourdomain.example.com` and will
-automatically renew.
-
 ## Access kubernetes
 
 After deployment, the kubernetes config has been copied to the
@@ -169,6 +147,31 @@ ssh to login to any of the nodes:
 ```
 ssh node1
 ```
+
+## Check the status of the traefik service
+
+Traefik is used as a Kubernetes Ingress Controller. Traefik uses Let's
+Encrypt to create a SSL/TLS certificate for your domain name, and will
+provide secure URLs for your exposed services.
+
+```
+kubectl -n kube-system get service traefik
+```
+
+A Load Balancer service should have started and will show an external
+IP address.
+
+ - In your DigitalOcean account, create a wildcard DNS entry for your
+   domain (`*.yourdomain.example.com`) and point it to the load
+   balancer that started for the traefik service.
+ - TODO: automate this.
+
+If you turned on the traefik dashboard (`traefik_dashboard_enabled:
+true`), you should now be able to visit
+`traefik.yourdomain.example.com` in your web-browser. It should
+automatically forward to HTTPS, and use a new certificate issued by
+Lets Encrypt. This same certificate will apply to any subdomain
+`*.yourdomain.example.com` and will automatically renew.
 
 ## Running Playbooks
 
