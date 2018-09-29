@@ -217,3 +217,4 @@ traefik_dashboard_enabled: true
 traefik_domain_wildcard: *.k8s.example.com
 traefik_dashboard_domain: traefik.k8s.example.com
 traefik_email: letsencrypt@example.com
+sealed_secrets_version: v0.7.0

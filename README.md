@@ -118,6 +118,8 @@ kubelab-setup.sh
    default, so you can (semi-safely) put your secrets anywhere in this
    directory. The directory `/var/lib/kubelab/inventory/sample` is
    used as its template.
+ - See the bulk of the config on the bottom of
+   `/var/lib/kubelab/inventory/kubelab/group_vars/k8s-cluster/k8s-cluster.yml`
  - Once setup is complete, deploy the cluster by running:
 
 ```

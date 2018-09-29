@@ -6,8 +6,8 @@
       version: 1.44.0
     values:
       dashboard:
-        enabled: {{ traefik_dashboard_enabled }}
-        domain: {{ traefik_dashboard_domain }}
+        enabled: '{{ traefik_dashboard_enabled }}'
+        domain: '{{ traefik_dashboard_domain }}'
       rbac:
         enabled: true
       ssl:
@@ -16,13 +16,13 @@
       acme:
         staging: false
         enabled: true
-        email: {{ traefik_email }}
+        email: '{{ traefik_email }}'
         challengeType: dns-01
         dnsProvider:
           name: digitalocean
           digitalocean:
-            DO_AUTH_TOKEN: {{ digitalocean_api_token }}
+            DO_AUTH_TOKEN: '{{ digitalocean_api_token }}'
         domains:
           enabled: true
           domainsList:
-            - main: {{ traefik_domain_wildcard }}
+            - main: '{{ traefik_domain_wildcard }}'

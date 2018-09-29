@@ -68,6 +68,7 @@ write_files:
       # Build ansible docker image (if not already)
       docker inspect --type=image kubelab > /dev/null
       [ $? -ne 0 ] && docker build -t kubelab $KUBELAB_HOME
+      [ $? -ne 0 ] && exit 1
 
       # Configure kubelab ansible inventory
       cp -a $KUBELAB_HOME/inventory/sample $KUBELAB_HOME/inventory/kubelab
@@ -75,10 +76,10 @@ write_files:
                  -e CONFIG_FILE=inventory/kubelab/hosts.ini \
                  kubelab \
                  python3 contrib/inventory_builder/inventory.py $DROPLET_IPS
-      sed -i -e "s/^digitalocean_api_token:.*/digitalocean_api_token: $DIGITALOCEAN_API_TOKEN/" \
-             -e "s/k8s\.example\.com/$TRAEFIK_DOMAIN/g" \
-             -e "s/^traefik_email:.*/traefik_email: $EMAIL/" \
-             -e "s/^traefik_domain_wildcard:.*/traefik_domain_wildcard: *.$DOMAIN/" \
+      sed -i -e "s/^digitalocean_api_token:.*/digitalocean_api_token: '$DIGITALOCEAN_API_TOKEN'/" \
+             -e "s/^traefik_email:.*/traefik_email: '$EMAIL'/" \
+             -e "s/^traefik_domain_wildcard:.*/traefik_domain_wildcard: '*.$DOMAIN'/" \
+             -e "s/^traefik_dashboard_domain:.*/traefik_dashboard_domain: 'traefik.$DOMAIN'/" \
              $KUBELAB_HOME/inventory/kubelab/group_vars/k8s-cluster/k8s-cluster.yml
                  
       # Configure ssh aliases for cluster node
@@ -93,7 +94,7 @@ write_files:
       EOF
       done
       
-      echo "Configuration created in $KUBELAB_HOME/invetory/kubelab"
+      echo "Configuration created in $KUBELAB_HOME/inventory/kubelab"
       echo "Run kubelab-deploy.sh to deploy the cluster"
       
   - path: "/usr/local/bin/kubelab-playbook.sh"
@@ -114,9 +115,9 @@ write_files:
       #!/bin/bash
       ## Deploy kubespray cluster and kubelab:
       /usr/local/bin/kubelab-playbook.sh cluster.yml && \
-      /usr/local/bin/kubelab-playbook.sh kubelab.yml && \
       mkdir -p $HOME/.kube && \
-      scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r node1:.kube/config $HOME/.kube/config
+      scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r node1:.kube/config $HOME/.kube/config && \
+      /usr/local/bin/kubelab-playbook.sh kubelab.yml
 
   - path: "/etc/docker/daemon.json"
     content: |
